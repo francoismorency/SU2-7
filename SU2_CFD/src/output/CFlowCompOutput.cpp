@@ -478,10 +478,21 @@ void CFlowCompOutput::LoadVolumeData(CConfig *config, CGeometry *geometry, CSolv
   SetVolumeOutputValue("PRESSURE", iPoint, Node_Flow->GetPressure(iPoint));
   SetVolumeOutputValue("TEMPERATURE", iPoint, Node_Flow->GetTemperature(iPoint));
   SetVolumeOutputValue("MACH", iPoint, sqrt(Node_Flow->GetVelocity2(iPoint))/Node_Flow->GetSoundSpeed(iPoint));
-
   su2double VelMag = 0.0;
-  for (unsigned short iDim = 0; iDim < nDim; iDim++){
-    VelMag += pow(solver[FLOW_SOL]->GetVelocity_Inf(iDim),2.0);
+  //FM: Correction for dynamic mesh
+  if (config->GetDynamic_Grid()) {
+    su2double Gamma, Gas_Constant, Mach2Vel,Mach_Motion;
+    Gamma = config->GetGamma();
+    Gas_Constant = config->GetGas_ConstantND();
+    Mach2Vel = sqrt(
+                    Gamma * Gas_Constant * config->GetTemperature_FreeStreamND());
+    Mach_Motion = config->GetMach_Motion();
+    VelMag = (Mach_Motion * Mach2Vel) * (Mach_Motion * Mach2Vel);
+  } else {
+  //FM: End
+    for (unsigned short iDim = 0; iDim < nDim; iDim++){
+      VelMag += pow(solver[FLOW_SOL]->GetVelocity_Inf(iDim),2.0);
+    }
   }
   su2double factor = 1.0/(0.5*solver[FLOW_SOL]->GetDensity_Inf()*VelMag);
   SetVolumeOutputValue("PRESSURE_COEFF", iPoint, (Node_Flow->GetPressure(iPoint) - solver[FLOW_SOL]->GetPressure_Inf())*factor);
